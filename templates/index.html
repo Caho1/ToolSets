@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线统计分析与绘图</title>
+    <style>
+        /* --- Basic Styles --- */
+        body {
+            font-family: sans-serif;
+            margin: 20px;
+            background-color: #f8f9fa; /* Light background for body */
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #343a40;
+            margin-bottom: 25px;
+        }
+        h2 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 5px;
+            font-size: 1.3em;
+        }
+
+        /* --- Navigation Tabs --- */
+        nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 0 0; /* Remove bottom margin, let section add top margin */
+            border-bottom: 2px solid #dee2e6;
+        }
+        nav li {
+            display: inline-block;
+            margin-right: 5px;
+            margin-bottom: -2px; /* Overlap border slightly */
+        }
+        nav a {
+            display: block;
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #007bff;
+            border: 1px solid transparent;
+            border-bottom: none;
+            cursor: pointer;
+            background-color: #e9ecef; /* Default tab background */
+            border-radius: 5px 5px 0 0;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        nav a.active {
+            font-weight: bold;
+            border-color: #dee2e6;
+            border-bottom-color: white;
+            background-color: white;
+            color: #495057;
+        }
+        nav a:hover:not(.active) {
+            background-color: #ced4da;
+            color: #0056b3;
+        }
+
+        /* --- Analysis Section Layout --- */
+        .analysis-section {
+            display: flex;
+            gap: 25px; /* Increased gap */
+            border: 1px solid #dee2e6;
+            padding: 20px;
+            border-radius: 0 5px 5px 5px; /* Rounded corners except top-left */
+            margin-top: 0; /* Attach directly below nav border */
+            background-color: white; /* White background for content area */
+        }
+        .hidden { display: none; }
+
+        /* --- Left Column (Input/Stats) & Right Column (Plot) --- */
+        .input-stats-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 48%; /* Adjusted min-width */
+            max-width: 50%; /* Prevent left side from getting too wide */
+        }
+        .plot-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 48%; /* Adjusted min-width */
+        }
+
+        /* --- Input Table --- */
+        table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; font-size: 0.9em; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        td[contenteditable="true"] { background-color: #fff; cursor: text; }
+        td[contenteditable="true"]:focus { outline: 2px solid #80bdff; background-color: #eaf5ff; box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25); }
+
+        /* --- Buttons & Controls --- */
+        button {
+            padding: 5px 12px; /* Adjusted padding */
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px; /* Reduced bottom margin */
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            color: #495057;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+            font-size: 0.9em;
+        }
+        button:hover {
+            background-color: #e2e6ea;
+            border-color: #adb5bd;
+        }
+        /* Specific button styles */
+        .generateStatsBtn, .generatePlotBtn {
+             background-color: #007bff;
+             color: white;
+             border-color: #007bff;
+        }
+         .generateStatsBtn:hover, .generatePlotBtn:hover {
+             background-color: #0056b3;
+             border-color: #0056b3;
+        }
+
+        select, input[type="checkbox"] {
+            padding: 5px;
+            margin-left: 5px;
+            margin-right: 5px;
+            vertical-align: middle;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        label {
+            margin-left: 5px;
+            margin-right: 5px;
+            vertical-align: middle;
+            font-size: 0.9em;
+        }
+        .controls {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .controls button, .controls select, .controls label, .controls input {
+            margin-bottom: 10px; /* Ensure spacing within controls */
+        }
+
+        /* Add/Remove Row Button Styling */
+        .table-row-controls {
+            margin-bottom: 10px;
+        }
+        .table-row-controls button {
+            display: inline-block;
+            padding: 3px 8px;
+            margin-right: 5px;
+            margin-bottom: 0;
+            width: auto;
+            vertical-align: middle;
+            background-color: #6c757d; /* Grey buttons */
+            color: white;
+            border-color: #6c757d;
+        }
+         .table-row-controls button:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+         }
+        .table-row-controls button:last-child {
+            margin-right: 0;
+        }
+
+        /* --- Output Areas --- */
+        .statsOutput {
+            white-space: pre-wrap;
+            background-color: #fdfdff; /* Slightly off-white */
+            border: 1px solid #e0e0e0;
+            padding: 15px;
+            margin-top: 5px; /* Reduced space above stats */
+            margin-bottom: 15px;
+            font-family: Consolas, 'Courier New', monospace; /* Monospace font */
+            font-size: 0.85em; /* Slightly smaller font */
+            line-height: 1.5; /* Better readability */
+            min-height: 150px;
+            max-height: 400px;
+            overflow: auto;
+            flex-grow: 1; /* Allow stats area to grow */
+            border-radius: 4px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .pdfFrame {
+            width: 100%;
+            height: 100%;
+            min-height: 500px;
+            border: 1px solid #ccc;
+            background-color: #f0f0f0;
+            flex-grow: 1;
+            border-radius: 4px;
+        }
+        .status {
+            margin-top: auto;
+            padding-top: 10px;
+            font-style: italic;
+            color: #6c757d; /* Use theme grey */
+            min-height: 1.2em;
+            font-size: 0.9em;
+        }
+
+        /* --- Input Hint Text --- */
+        .input-hint {
+             font-size: smaller;
+             color: #6c757d;
+             margin-bottom: 10px;
+             margin-top: -10px; /* Pull closer to title */
+        }
+    </style>
+</head>
+<body>
+
+<h1>在线统计分析</h1>
+
+<nav>
+    <ul>
+        <li><a href="#correlation" class="nav-link active" data-target="correlationAnalysisSection">相关性分析</a></li>
+        <li><a href="#two-group" class="nav-link" data-target="twoGroupComparisonSection">两组比较分析</a></li>
+        <li><a href="#survival" class="nav-link" data-target="survivalAnalysisSection">生存分析</a></li>
+    </ul>
+</nav>
+
+<div id="correlationAnalysisSection" class="analysis-section">
+    <div class="input-stats-section">
+        <h2>输入数据 (X, Y)</h2>
+        <div class="table-row-controls">
+            <button class="addRowBtn">增加行</button>
+            <button class="removeRowBtn">删除最后一行</button>
+        </div>
+        <table class="dataTable">
+            <thead><tr><th>序号</th><th>变量 X</th><th>变量 Y</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td contenteditable="true">1.1</td><td contenteditable="true">14</td></tr>
+                <tr><td>2</td><td contenteditable="true">1.2</td><td contenteditable="true">13</td></tr>
+                <tr><td>3</td><td contenteditable="true">1</td><td contenteditable="true">15</td></tr>
+                <tr><td>4</td><td contenteditable="true">0.9</td><td contenteditable="true">15</td></tr>
+                <tr><td>5</td><td contenteditable="true">1.2</td><td contenteditable="true">13</td></tr>
+            </tbody>
+        </table>
+        <div class="controls">
+            <button class="generateStatsBtn" data-endpoint="/generate_stats">生成描述</button>
+            <button class="generatePlotBtn" data-endpoint="/generate_plot">生成图表</button>
+            <label for="corrPlotMethodSelect">拟合方法:</label>
+            <select id="corrPlotMethodSelect" class="plotMethodSelect">
+                <option value="none">无拟合线</option>
+                <option value="lm" selected>lm (线性)</option>
+                <option value="glm">glm (广义线性)</option>
+                <option value="gam">gam (广义可加)</option>
+                <option value="loess">loess (局部平滑)</option>
+            </select>
+        </div>
+
+        <h2>统计描述</h2>
+        <div class="statsOutput">（相关性分析结果将显示在此处）</div>
+
+        <div class="status"></div>
+    </div>
+    <div class="plot-section">
+        <h2>图表结果</h2>
+        <iframe class="pdfFrame" title="Correlation Plot Output"></iframe>
+    </div>
+</div>
+
+<div id="twoGroupComparisonSection" class="analysis-section hidden">
+     <div class="input-stats-section">
+        <h2>输入数据 (Group, Value)</h2>
+        <div class="table-row-controls">
+            <button class="addRowBtn">增加行</button>
+            <button class="removeRowBtn">删除最后一行</button>
+        </div>
+        <table class="dataTable">
+             <thead><tr><th>序号</th><th>分组 (例如 A, B)</th><th>数值</th></tr></thead>
+             <tbody>
+                 <tr><td>1</td><td contenteditable="true">A</td><td contenteditable="true">55</td></tr>
+                 <tr><td>2</td><td contenteditable="true">A</td><td contenteditable="true">65</td></tr>
+                 <tr><td>3</td><td contenteditable="true">A</td><td contenteditable="true">58</td></tr>
+                 <tr><td>4</td><td contenteditable="true">B</td><td contenteditable="true">48</td></tr>
+                 <tr><td>5</td><td contenteditable="true">B</td><td contenteditable="true">51</td></tr>
+                 <tr><td>6</td><td contenteditable="true">B</td><td contenteditable="true">45</td></tr>
+             </tbody>
+        </table>
+        <div class="controls">
+             <button class="generateStatsBtn" data-endpoint="/generate_two_group_stats">生成描述</button>
+             <button class="generatePlotBtn" data-endpoint="/generate_two_group_plot">生成图表</button>
+             <label for="twoGroupPlotTypeSelect">图表类型:</label>
+             <select id="twoGroupPlotTypeSelect" class="plotMethodSelect">
+                <option value="boxplot" selected>箱线图 (Boxplot)</option>
+                <option value="violin">小提琴图 (Violin)</option>
+                <option value="density">密度图 (Density)</option>
+             </select>
+        </div>
+
+        <h2>统计描述</h2>
+        <div class="statsOutput">（两组比较统计结果将显示在此处）</div>
+
+        <div class="status"></div>
+    </div>
+     <div class="plot-section">
+        <h2>图表结果</h2>
+        <iframe class="pdfFrame" title="Two-Group Comparison Plot Output"></iframe>
+    </div>
+</div>
+
+<div id="survivalAnalysisSection" class="analysis-section hidden">
+     <div class="input-stats-section">
+        <h2>输入数据 (Time, Status, Group)</h2>
+        <p class="input-hint">说明: Status 通常 1=事件发生 (如死亡), 0=删失 (如失访/研究结束时仍存活)。Group 为可选分组变量。</p>
+         <div class="table-row-controls">
+            <button class="addRowBtn">增加行</button>
+            <button class="removeRowBtn">删除最后一行</button>
+        </div>
+        <table class="dataTable">
+             <thead><tr><th>序号</th><th>时间 (Time)</th><th>状态 (Status: 1/0)</th><th>分组 (可选)</th></tr></thead>
+             <tbody>
+                 <tr><td>1</td><td contenteditable="true">10</td><td contenteditable="true">1</td><td contenteditable="true">A</td></tr>
+                 <tr><td>2</td><td contenteditable="true">15</td><td contenteditable="true">0</td><td contenteditable="true">A</td></tr>
+                 <tr><td>3</td><td contenteditable="true">20</td><td contenteditable="true">1</td><td contenteditable="true">A</td></tr>
+                 <tr><td>4</td><td contenteditable="true">8</td><td contenteditable="true">1</td><td contenteditable="true">B</td></tr>
+                 <tr><td>5</td><td contenteditable="true">12</td><td contenteditable="true">1</td><td contenteditable="true">B</td></tr>
+                 <tr><td>6</td><td contenteditable="true">25</td><td contenteditable="true">0</td><td contenteditable="true">B</td></tr>
+             </tbody>
+        </table>
+        <div class="controls">
+             <button class="generateStatsBtn" data-endpoint="/generate_survival_stats">生成结果</button>
+             <button class="generatePlotBtn" data-endpoint="/generate_survival_plot">生成图表</button>
+             <br>
+             <input type="checkbox" id="survival_show_ci" class="plotOptionCheckbox" value="show_ci" checked><label for="survival_show_ci">显示置信区间</label>
+             <input type="checkbox" id="survival_show_risk_table" class="plotOptionCheckbox" value="show_risk_table"><label for="survival_show_risk_table">显示风险表</label>
+        </div>
+
+        <h2>分析结果</h2>
+        <div class="statsOutput">（生存分析结果将显示在此处）</div>
+
+        <div class="status"></div>
+    </div>
+     <div class="plot-section">
+        <h2>生存曲线图</h2>
+        <iframe class="pdfFrame" title="Survival Analysis Plot Output"></iframe>
+    </div>
+</div>
+
+<script>
+    // --- Navigation Logic ---
+    const navLinks = document.querySelectorAll('.nav-link');
+    const analysisSections = document.querySelectorAll('.analysis-section');
+
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            navLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            const targetId = link.getAttribute('data-target');
+            analysisSections.forEach(section => {
+                section.classList.toggle('hidden', section.id !== targetId);
+            });
+            const targetSection = document.getElementById(targetId);
+            if (targetSection) {
+                 const statsOutput = targetSection.querySelector('.statsOutput');
+                 if (statsOutput) statsOutput.textContent = '（结果将显示在此处）';
+                 const frame = targetSection.querySelector('.pdfFrame');
+                 if (frame) frame.src = 'about:blank';
+                 const statusDiv = targetSection.querySelector('.status');
+                 if (statusDiv) statusDiv.textContent = '';
+            }
+        });
+    });
+
+    // --- General Setup for Each Section ---
+    analysisSections.forEach(section => {
+        const sectionId = section.id;
+        const tableBody = section.querySelector('.dataTable tbody');
+        // Ensure elements exist before adding listeners
+        const addRowBtn = section.querySelector('.addRowBtn');
+        const removeRowBtn = section.querySelector('.removeRowBtn');
+        const generateStatsBtn = section.querySelector('.generateStatsBtn');
+        const generatePlotBtn = section.querySelector('.generatePlotBtn');
+        const plotMethodSelect = section.querySelector('.plotMethodSelect');
+        const plotOptionCheckboxes = section.querySelectorAll('.plotOptionCheckbox');
+        const statusDiv = section.querySelector('.status');
+        const statsOutputDiv = section.querySelector('.statsOutput');
+        const pdfFrame = section.querySelector('.pdfFrame');
+
+        // --- Utility Functions ---
+        function updateRowNumbers() {
+             if (!tableBody) return;
+             const rows = tableBody.querySelectorAll('tr');
+             rows.forEach((row, index) => {
+                if(row.cells.length > 0) row.cells[0].textContent = index + 1;
+             });
+        }
+
+        function getTableData() {
+             if (!tableBody) return []; // Return empty if table not found
+
+             const data = [];
+             const rows = tableBody.querySelectorAll('tr');
+             let hasInvalidRow = false;
+             const analysisType = sectionId;
+
+             rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length === 0) return;
+                const cellTexts = Array.from(cells).map(cell => cell.textContent.trim());
+
+                // Basic check for emptiness based on analysis type
+                let isEmpty = true;
+                if (analysisType === 'correlationAnalysisSection' || analysisType === 'twoGroupComparisonSection') {
+                     isEmpty = (cellTexts[1] === '' && cellTexts[2] === '');
+                } else if (analysisType === 'survivalAnalysisSection') {
+                     isEmpty = (cellTexts[1] === '' && cellTexts[2] === ''); // Time and Status needed
+                }
+                if (isEmpty && cells.length > 1 && cellTexts.slice(1).every(t => t === '')) return; // Skip rows empty except for maybe index
+
+                let rowData = null;
+                let isValid = false;
+
+                try {
+                    if (analysisType === 'correlationAnalysisSection') {
+                        const xNum = parseFloat(cellTexts[1]);
+                        const yNum = parseFloat(cellTexts[2]);
+                        if (!isNaN(xNum) && !isNaN(yNum)) { rowData = [xNum, yNum]; isValid = true; }
+                    } else if (analysisType === 'twoGroupComparisonSection') {
+                        const groupName = cellTexts[1];
+                        const valueNum = parseFloat(cellTexts[2]);
+                        if (groupName !== '' && !isNaN(valueNum)) { rowData = [groupName, valueNum]; isValid = true; }
+                    } else if (analysisType === 'survivalAnalysisSection') {
+                        if (cells.length < 3) throw new Error("Survival needs Time and Status columns."); // Need at least 2 editable cols
+                        const timeNum = parseFloat(cellTexts[1]);
+                        const statusNum = parseInt(cellTexts[2], 10);
+                        const groupName = cells.length > 3 ? (cellTexts[3] || '') : ''; // Handle optional group column
+
+                        if (!isNaN(timeNum) && timeNum >= 0 && (statusNum === 0 || statusNum === 1)) {
+                             rowData = [timeNum, statusNum, groupName];
+                             isValid = true;
+                        } else {
+                            console.warn(`Survival Row ${cellTexts[0]}: Invalid Time (>=0), Status (0 or 1). T='${cellTexts[1]}', S='${cellTexts[2]}'`);
+                        }
+                    }
+                } catch (e) { console.error("Error parsing row:", e); }
+
+                if (isValid && rowData) {
+                    data.push(rowData);
+                } else if (cellTexts.slice(1).some(t => t !== '')) {
+                    console.warn(`Section ${sectionId}, Row ${cellTexts[0]}: Invalid data ignored.`);
+                    hasInvalidRow = true;
+                }
+             });
+
+             setStatus('', 'info'); // Reset status before validation messages
+
+             if (hasInvalidRow) {
+                 setStatus('警告：部分行包含无效或格式错误的数据，已被忽略。', 'error');
+             }
+
+             // --- Validations ---
+             let minRows = 0;
+             if (analysisType === 'correlationAnalysisSection') minRows = 3;
+             else if (analysisType === 'twoGroupComparisonSection') minRows = 4;
+             else if (analysisType === 'survivalAnalysisSection') minRows = 3;
+
+             if (data.length < minRows) {
+                 const currentMsg = statusDiv.textContent;
+                 const errorMsg = `错误：需要至少 ${minRows} 行有效数据才能进行分析。当前有效行数: ${data.length}。`;
+                 setStatus(currentMsg ? `${currentMsg} ${errorMsg}` : errorMsg, 'error');
+                 return null;
+             }
+
+             if (analysisType === 'twoGroupComparisonSection') {
+                 const groups = new Set(data.map(row => row[0]));
+                 if (groups.size !== 2) {
+                     const currentMsg = statusDiv.textContent;
+                     const errorMsg = `错误：两组比较需要恰好两个分组名称。当前找到 ${groups.size} 个: ${[...groups].join(', ')}。`;
+                     setStatus(currentMsg ? `${currentMsg} ${errorMsg}` : errorMsg, 'error');
+                     return null;
+                 }
+                 const groupCounts = data.reduce((acc, row) => { acc[row[0]] = (acc[row[0]] || 0) + 1; return acc; }, {});
+                 for (const group in groupCounts) {
+                     if (groupCounts[group] < 2) {
+                         const currentMsg = statusDiv.textContent;
+                         const errorMsg = `错误：分组 "${group}" 的有效数据少于 2 行 (${groupCounts[group]} 行)，无法进行分析。`;
+                         setStatus(currentMsg ? `${currentMsg} ${errorMsg}` : errorMsg, 'error');
+                         return null;
+                     }
+                 }
+             }
+
+             if (analysisType === 'survivalAnalysisSection') {
+                 const groups = new Set(data.map(row => row[2]).filter(g => g !== ''));
+                 if (groups.size > 1) {
+                     const groupCounts = data.reduce((acc, row) => { if(row[2] !== '') acc[row[2]] = (acc[row[2]] || 0) + 1; return acc; }, {});
+                     for (const group in groupCounts) {
+                          if (groupCounts[group] < 2) {
+                               const currentMsg = statusDiv.textContent;
+                               const errorMsg = `错误：生存分析分组 "${group}" 的有效数据少于 2 行。`;
+                               setStatus(currentMsg ? `${currentMsg} ${errorMsg}` : errorMsg, 'error');
+                               return null;
+                          }
+                     }
+                 }
+             }
+
+             return data; // Return valid data
+         }
+
+        function setStatus(message, type = 'info') {
+             if (statusDiv) {
+                 statusDiv.textContent = message;
+                 switch(type) {
+                    case 'info': statusDiv.style.color = '#6c757d'; break;
+                    case 'working': statusDiv.style.color = '#fd7e14'; break; /* Orange */
+                    case 'success': statusDiv.style.color = '#28a745'; break; /* Green */
+                    case 'error': statusDiv.style.color = '#dc3545'; break; /* Red */
+                    default: statusDiv.style.color = '#6c757d';
+                }
+             }
+        }
+
+        // --- Event Listeners ---
+        if(addRowBtn){
+             addRowBtn.addEventListener('click', () => {
+                 if (!tableBody) return;
+                 const newRow = tableBody.insertRow();
+                 const headerCells = tableBody.previousElementSibling?.rows?.[0]?.cells; // More robust check
+                 const cellCount = headerCells ? headerCells.length : 3; // Default to 3 if header not found
+
+                 for(let i=0; i< cellCount; i++){
+                     const cell = newRow.insertCell();
+                     if(i===0) cell.textContent = tableBody.rows.length;
+                     else cell.setAttribute('contenteditable', 'true');
+                 }
+                 if(newRow.cells.length > 1) newRow.cells[1].focus();
+             });
+         }
+        if (removeRowBtn) {
+             removeRowBtn.addEventListener('click', () => {
+                 if (!tableBody) return;
+                 if (tableBody.rows.length > 1) {
+                    tableBody.deleteRow(tableBody.rows.length - 1);
+                 } else {
+                    setStatus('至少需要保留一行。', 'error');
+                 }
+             });
+         }
+
+        // Generate Statistics Button Handler
+        if (generateStatsBtn) {
+             generateStatsBtn.addEventListener('click', async () => {
+                 setStatus('读取数据...', 'working');
+                 if (statsOutputDiv) statsOutputDiv.textContent = '（正在生成统计结果...）';
+                 if (pdfFrame) pdfFrame.src = 'about:blank';
+
+                 const data = getTableData();
+                 if (!data) return; // Validation failed in getTableData
+
+                 const endpoint = generateStatsBtn.getAttribute('data-endpoint');
+                 setStatus(`正在请求 ${endpoint}...`, 'working');
+                 try {
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ table_data: data }),
+                    });
+                     if (response.ok) {
+                         const result = await response.json();
+                         setStatus('统计结果生成成功。', 'success');
+                         if (statsOutputDiv) statsOutputDiv.textContent = result.stats_text;
+                     } else {
+                         const errorText = await response.text();
+                         setStatus(`统计结果生成失败: ${response.status} ${response.statusText}. ${errorText}`, 'error');
+                         if (statsOutputDiv) statsOutputDiv.textContent = '生成统计结果时出错。';
+                     }
+                 } catch (error) {
+                     console.error(`Workspace Error (${endpoint}):`, error);
+                     setStatus(`网络或脚本错误: ${error}`, 'error');
+                     if (statsOutputDiv) statsOutputDiv.textContent = '请求统计结果时发生客户端错误。';
+                 }
+             });
+         }
+
+         // Generate Plot Button Handler
+         if (generatePlotBtn) {
+             generatePlotBtn.addEventListener('click', async () => {
+                 setStatus('读取数据...', 'working');
+                 if(pdfFrame) pdfFrame.src = 'about:blank';
+                 const data = getTableData();
+                 if (!data) return; // Validation failed
+
+                 let payload = { table_data: data };
+                 // Add plot method or options to payload
+                 if (plotMethodSelect) {
+                     payload.plot_method = plotMethodSelect.value;
+                 } else if (plotOptionCheckboxes.length > 0) {
+                     payload.plot_options = {};
+                     plotOptionCheckboxes.forEach(cb => {
+                         payload.plot_options[cb.value] = cb.checked;
+                     });
+                 }
+
+                 const endpoint = generatePlotBtn.getAttribute('data-endpoint');
+                 const methodInfo = payload.plot_method ? ` (方法/类型: ${payload.plot_method})` : '';
+                 setStatus(`正在请求 ${endpoint}${methodInfo}...`, 'working');
+
+                 try {
+                     const response = await fetch(endpoint, {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify(payload),
+                     });
+                     if (response.ok) {
+                         const result = await response.json();
+                         setStatus('图表生成请求成功，正在加载 PDF...', 'success');
+                         if(pdfFrame) pdfFrame.src = result.pdf_url;
+                     } else {
+                         const errorText = await response.text();
+                         setStatus(`图表生成失败: ${response.status} ${response.statusText}. ${errorText}`, 'error');
+                     }
+                 } catch (error) {
+                     console.error(`Workspace Error (${endpoint}):`, error);
+                     setStatus(`网络或脚本错误: ${error}`, 'error');
+                 }
+             });
+         }
+
+        // Initial setup
+        updateRowNumbers();
+    });
+
+    // Activate the first tab initially
+    if(navLinks.length > 0) {
+         navLinks[0].click();
+    }
+
+</script>
+
+</body>
+</html>
